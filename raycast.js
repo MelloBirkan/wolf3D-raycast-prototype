@@ -61,8 +61,10 @@ class Player {
     this.rotationAngle += this.turnDirection * this.rotationSpeed;
 
     let moveStep = this.walkDirection * this.moveSpeed;
-    this.x += moveStep * Math.cos(this.rotationAngle);
-    this.y += moveStep * Math.sin(this.rotationAngle);
+    if (isNotWall(this.x + moveStep * Math.cos(this.rotationAngle), this.y + moveStep * Math.sin(this.rotationAngle))) {
+      this.x += moveStep * Math.cos(this.rotationAngle);
+      this.y += moveStep * Math.sin(this.rotationAngle);
+    }
   }
 }
 
@@ -75,9 +77,9 @@ function keyPressed() {
   } else if (keyCode === RIGHT_ARROW) {
     player.turnDirection = +1;
   } else if (keyCode === UP_ARROW) {
-    player.walkDirection = +1;
+      player.walkDirection = +1;
   } else if (keyCode === DOWN_ARROW) {
-    player.walkDirection = -1;
+      player.walkDirection = -1;
   } else {
     console.log("Unknown key pressed");
   }
@@ -91,6 +93,13 @@ function keyReleased() {
   }
 }
 
+function isNotWall(x, y) {
+  const gridX = Math.floor(x / TILE_SIZE);
+  const gridY = Math.floor(y / TILE_SIZE);
+
+  return gridX > 0 && gridX < MAP_NUM_COLS && gridY > 0 && gridY < MAP_NUM_ROWS && grid.grid[gridY][gridX] === 0;
+}
+
 function setup() {
   createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
 
@@ -98,6 +107,8 @@ function setup() {
 
 function update() {
   player.update()
+  console.log(grid.grid[int(player.y / TILE_SIZE) + 1][int(player.x / TILE_SIZE)]);
+  console.log(isNotWall(player.x + player.walkDirection * player.moveSpeed * Math.cos(player.rotationAngle), player.x + player.walkDirection * player.moveSpeed * Math.sin(player.rotationAngle)));
 }
 
 function draw() {
