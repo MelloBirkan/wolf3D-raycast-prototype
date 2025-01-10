@@ -5,6 +5,9 @@ const WINDOW_WIDTH = MAP_NUM_COLS * TILE_SIZE;
 const WINDOW_HEIGHT = MAP_NUM_ROWS * TILE_SIZE;
 const DARK_GRAY = "#222";
 const WHITE = "#fff";
+const FOV = 60 * (Math.PI / 180);
+const WALL_STRIP_WIDTH = 10;
+const NUM_RAYS = WINDOW_WIDTH / WALL_STRIP_WIDTH;
 
 class Map {
   constructor() {
@@ -35,6 +38,13 @@ class Map {
       }
     }
   }
+
+  isWalkable(x, y) {
+    const gridX = Math.floor(x / TILE_SIZE);
+    const gridY = Math.floor(y / TILE_SIZE);
+
+    return gridX > 0 && gridX < MAP_NUM_COLS && gridY > 0 && gridY < MAP_NUM_ROWS && this.grid[gridY][gridX] === 0;
+  }
 }
 
 class Player {
@@ -61,15 +71,32 @@ class Player {
     this.rotationAngle += this.turnDirection * this.rotationSpeed;
 
     let moveStep = this.walkDirection * this.moveSpeed;
-    if (isNotWall(this.x + moveStep * Math.cos(this.rotationAngle), this.y + moveStep * Math.sin(this.rotationAngle))) {
-      this.x += moveStep * Math.cos(this.rotationAngle);
-      this.y += moveStep * Math.sin(this.rotationAngle);
+    let nextX = this.x + moveStep * Math.cos(this.rotationAngle);
+    let nextY = this.y + moveStep * Math.sin(this.rotationAngle);
+
+    if (grid.isWalkable(nextX, nextY)) {
+      this.x = nextX;
+      this.y = nextY;
     }
   }
 }
 
+class Ray {
+  constructor(rayAngle) {
+    this.rayAngle = rayAngle;
+  }
+
+  render() {
+    stroke("rgba(255, 124, 255, 0.3)");
+    line(player.x, player.y, player.x + (30 * Math.cos(this.rayAngle)), player.y + 30 * Math.sin(this.rayAngle));
+  }
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+
 let grid = new Map();
 let player = new Player();
+let rays = []
 
 function keyPressed() {
   if (keyCode === LEFT_ARROW) {
@@ -77,9 +104,9 @@ function keyPressed() {
   } else if (keyCode === RIGHT_ARROW) {
     player.turnDirection = +1;
   } else if (keyCode === UP_ARROW) {
-      player.walkDirection = +1;
+    player.walkDirection = +1;
   } else if (keyCode === DOWN_ARROW) {
-      player.walkDirection = -1;
+    player.walkDirection = -1;
   } else {
     console.log("Unknown key pressed");
   }
@@ -93,11 +120,21 @@ function keyReleased() {
   }
 }
 
-function isNotWall(x, y) {
-  const gridX = Math.floor(x / TILE_SIZE);
-  const gridY = Math.floor(y / TILE_SIZE);
+function castAllRays() {
+  let columnId = 0;
+  let rayAngle = player.rotationAngle - (FOV / 2);
+  rays = [];
 
-  return gridX > 0 && gridX < MAP_NUM_COLS && gridY > 0 && gridY < MAP_NUM_ROWS && grid.grid[gridY][gridX] === 0;
+  // for (let i = 0; i < NUM_RAYS; ++i) {
+  for (let i = 0; i < 1; ++i) {
+      let ray = new Ray(rayAngle);
+      // ray.cast();
+      rays.push(ray);
+
+      rayAngle += FOV / NUM_RAYS;
+
+      columnId++;
+  }
 }
 
 function setup() {
@@ -107,13 +144,15 @@ function setup() {
 
 function update() {
   player.update()
-  console.log(grid.grid[int(player.y / TILE_SIZE) + 1][int(player.x / TILE_SIZE)]);
-  console.log(isNotWall(player.x + player.walkDirection * player.moveSpeed * Math.cos(player.rotationAngle), player.x + player.walkDirection * player.moveSpeed * Math.sin(player.rotationAngle)));
+  castAllRays();
 }
 
 function draw() {
   update();
   grid.render();
+  for (ray of rays) {
+    ray.render();
+  }
   player.render();
 }
 
