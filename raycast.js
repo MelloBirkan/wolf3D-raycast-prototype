@@ -63,8 +63,8 @@ class Player {
     noStroke();
     fill("red");
     circle(this.x, this.y, this.radius);
-    stroke("red");
-    line(this.x, this.y, this.x + (30 * Math.cos(this.rotationAngle)), this.y + 30 * Math.sin(this.rotationAngle));
+    // stroke("red");
+    // line(this.x, this.y, this.x + (30 * Math.cos(this.rotationAngle)), this.y + 30 * Math.sin(this.rotationAngle));
   }
 
   update() {
@@ -83,13 +83,49 @@ class Player {
 
 class Ray {
   constructor(rayAngle) {
-    this.rayAngle = rayAngle;
+    this.rayAngle = normalizeAngle(rayAngle);
+    this.wallHitX = 0;
+    this.wallHitY = 0;
+    this.distance = 0;
+
+    this.isRayFacingDown = this.rayAngle < Math.PI && this.rayAngle > 0;
+    this.isRayFacingUp = !this.isRayFacingDown;
+    this.isRayfacingRight = this.rayAngle > (3 * Math.PI / 2) || this.rayAngle < Math.PI / 2;
+    this.isRayfacingLeft = !this.isRayfacingRight;
+  }
+
+  cast(columnId) {
+    let xIntercept, yIntercept;
+    let xStep, yStep;
+
+    ////////////////////////////////////////////////////////////
+    ///////////////////HORIZONTAL CHECK/////////////////////////
+    ////////////////////////////////////////////////////////////
+    console.log("Is ray facing right ?", this.isRayfacingRight);
+    yIntercept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
+    yIntercept += this.isRayFacingDown ? TILE_SIZE : 0;
+    xIntercept = player.x + ((yIntercept -player.y) / Math.tan(this.rayAngle))
+
+    yStep = TILE_SIZE;
+    yStep *= this.isRayFacingDown ? 1 : -1;
+    
+    xStep = TILE_SIZE / Math.tan(this.rayAngle);
+    xStep *= (this.isRayfacingLeft && xStep > 0) ? -1 : 1;
+    xStep *= (this.isRayfacingRight && xStep < 0) ? -1 : 1;
   }
 
   render() {
-    stroke("rgba(255, 124, 255, 0.3)");
+    stroke("rgba(255, 124, 255, 0.7)");
     line(player.x, player.y, player.x + (30 * Math.cos(this.rayAngle)), player.y + 30 * Math.sin(this.rayAngle));
   }
+}
+
+function normalizeAngle(angle) {
+  angle = angle % (2 * Math.PI);
+  if (angle < 0) {
+    angle += 2 * Math.PI;
+  }
+  return angle;
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -128,7 +164,7 @@ function castAllRays() {
   // for (let i = 0; i < NUM_RAYS; ++i) {
   for (let i = 0; i < 1; ++i) {
       let ray = new Ray(rayAngle);
-      // ray.cast();
+      ray.cast(columnId);
       rays.push(ray);
 
       rayAngle += FOV / NUM_RAYS;
