@@ -101,6 +101,10 @@ class Ray {
     ////////////////////////////////////////////////////////////
     ///////////////////HORIZONTAL CHECK/////////////////////////
     ////////////////////////////////////////////////////////////
+    let foundHorzWallHit = false;
+    let wallHitX = 0;
+    let wallHitY = 0;
+
     console.log("Is ray facing right ?", this.isRayfacingRight);
     yIntercept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
     yIntercept += this.isRayFacingDown ? TILE_SIZE : 0;
@@ -112,6 +116,25 @@ class Ray {
     xStep = TILE_SIZE / Math.tan(this.rayAngle);
     xStep *= (this.isRayfacingLeft && xStep > 0) ? -1 : 1;
     xStep *= (this.isRayfacingRight && xStep < 0) ? -1 : 1;
+
+    let nextHorzTouchX = xIntercept;
+    let nextHorzTouchY = yIntercept;
+
+    if (this.isRayFacingUp) {
+      nextHorzTouchY--;
+    }
+
+    while (nextHorzTouchX >= 0 && nextHorzTouchX <= WINDOW_WIDTH && nextHorzTouchY >= 0 && nextHorzTouchY <= WINDOW_HEIGHT) {
+      if (!grid.isWalkable(nextHorzTouchX, nextHorzTouchY)) {
+        foundHorzWallHit = true;
+        wallHitX = nextHorzTouchX;
+        wallHitY = nextHorzTouchY;
+        break;
+      } else {
+        nextHorzTouchX += xStep;
+        nextHorzTouchY += yStep;
+      }
+    }
   }
 
   render() {
