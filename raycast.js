@@ -1,4 +1,4 @@
-const TILE_SIZE = 32;
+const TILE_SIZE = 64;
 const MAP_NUM_ROWS = 11;
 const MAP_NUM_COLS = 15;
 const WINDOW_WIDTH = MAP_NUM_COLS * TILE_SIZE;
@@ -6,7 +6,7 @@ const WINDOW_HEIGHT = MAP_NUM_ROWS * TILE_SIZE;
 const DARK_GRAY = "#222";
 const WHITE = "#fff";
 const FOV = 60 * (Math.PI / 180);
-const WALL_STRIP_WIDTH = 10;
+const WALL_STRIP_WIDTH = 1;
 const NUM_RAYS = WINDOW_WIDTH / WALL_STRIP_WIDTH;
 
 class Map {
@@ -22,7 +22,7 @@ class Map {
       [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1],
       [1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1],
       [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
-      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+      [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     ];
   }
 
@@ -43,7 +43,13 @@ class Map {
     const gridX = Math.floor(x / TILE_SIZE);
     const gridY = Math.floor(y / TILE_SIZE);
 
-    return gridX > 0 && gridX < MAP_NUM_COLS && gridY > 0 && gridY < MAP_NUM_ROWS && this.grid[gridY][gridX] === 0;
+    return (
+      gridX >= 0 &&
+      gridX < MAP_NUM_COLS &&
+      gridY >= 0 &&
+      gridY < MAP_NUM_ROWS &&
+      this.grid[gridY][gridX] === 0
+    );
   }
 }
 
@@ -87,11 +93,13 @@ class Ray {
     this.wallHitX = 0;
     this.wallHitY = 0;
     this.distance = 0;
+    this.wasHitVertical = false;
 
-    this.isRayFacingDown = this.rayAngle < Math.PI && this.rayAngle > 0;
+    this.isRayFacingDown = this.rayAngle > 0 && this.rayAngle < Math.PI;
     this.isRayFacingUp = !this.isRayFacingDown;
-    this.isRayfacingRight = this.rayAngle > (3 * Math.PI / 2) || this.rayAngle < Math.PI / 2;
-    this.isRayfacingLeft = !this.isRayfacingRight;
+    this.isRayFacingRight =
+      this.rayAngle < Math.PI / 2 || this.rayAngle > (3 * Math.PI) / 2;
+    this.isRayFacingLeft = !this.isRayFacingRight;
   }
 
   cast(columnId) {
@@ -102,20 +110,18 @@ class Ray {
     ///////////////////HORIZONTAL CHECK/////////////////////////
     ////////////////////////////////////////////////////////////
     let foundHorzWallHit = false;
-    let wallHitX = 0;
-    let wallHitY = 0;
+    let horzWallHitX = 0;
+    let horzWallHitY = 0;
 
-    console.log("Is ray facing right ?", this.isRayfacingRight);
     yIntercept = Math.floor(player.y / TILE_SIZE) * TILE_SIZE;
     yIntercept += this.isRayFacingDown ? TILE_SIZE : 0;
-    xIntercept = player.x + ((yIntercept -player.y) / Math.tan(this.rayAngle))
+    xIntercept = player.x + (yIntercept - player.y) / Math.tan(this.rayAngle);
 
     yStep = TILE_SIZE;
-    yStep *= this.isRayFacingDown ? 1 : -1;
-    
+    yStep *= this.isRayFacingUp ? -1 : 1;
+
     xStep = TILE_SIZE / Math.tan(this.rayAngle);
-    xStep *= (this.isRayfacingLeft && xStep > 0) ? -1 : 1;
-    xStep *= (this.isRayfacingRight && xStep < 0) ? -1 : 1;
+    xStep *= (this.isRayFacingLeft && xStep > 0) || (this.isRayFacingRight && xStep < 0) ? -1 : 1;
 
     let nextHorzTouchX = xIntercept;
     let nextHorzTouchY = yIntercept;
@@ -124,23 +130,92 @@ class Ray {
       nextHorzTouchY--;
     }
 
-    while (nextHorzTouchX >= 0 && nextHorzTouchX <= WINDOW_WIDTH && nextHorzTouchY >= 0 && nextHorzTouchY <= WINDOW_HEIGHT) {
+    while (
+      nextHorzTouchX >= 0 &&
+      nextHorzTouchX <= WINDOW_WIDTH &&
+      nextHorzTouchY >= 0 &&
+      nextHorzTouchY <= WINDOW_HEIGHT
+    ) {
       if (!grid.isWalkable(nextHorzTouchX, nextHorzTouchY)) {
         foundHorzWallHit = true;
-        wallHitX = nextHorzTouchX;
-        wallHitY = nextHorzTouchY;
+        horzWallHitX = nextHorzTouchX;
+        horzWallHitY = nextHorzTouchY;
         break;
       } else {
         nextHorzTouchX += xStep;
         nextHorzTouchY += yStep;
       }
     }
+
+    ////////////////////////////////////////////////////////////
+    ///////////////////VERTICAL CHECK///////////////////////////
+    ////////////////////////////////////////////////////////////
+    let foundVertWallHit = false;
+    let vertWallHitX = 0;
+    let vertWallHitY = 0;
+
+    xIntercept = Math.floor(player.x / TILE_SIZE) * TILE_SIZE;
+    xIntercept += this.isRayFacingRight ? TILE_SIZE : 0;
+    yIntercept = player.y + (xIntercept - player.x) * Math.tan(this.rayAngle);
+
+    xStep = TILE_SIZE;
+    xStep *= this.isRayFacingLeft ? -1 : 1;
+
+    yStep = TILE_SIZE * Math.tan(this.rayAngle);
+    yStep *= (this.isRayFacingUp && yStep > 0) || (this.isRayFacingDown && yStep < 0) ? -1 : 1;
+
+    let nextVertTouchX = xIntercept;
+    let nextVertTouchY = yIntercept;
+
+    if (this.isRayFacingLeft) {
+      nextVertTouchX--;
+    }
+
+    while (
+      nextVertTouchX >= 0 &&
+      nextVertTouchX <= WINDOW_WIDTH &&
+      nextVertTouchY >= 0 &&
+      nextVertTouchY <= WINDOW_HEIGHT
+    ) {
+      if (!grid.isWalkable(nextVertTouchX, nextVertTouchY)) {
+        foundVertWallHit = true;
+        vertWallHitX = nextVertTouchX;
+        vertWallHitY = nextVertTouchY;
+        break;
+      } else {
+        nextVertTouchX += xStep;
+        nextVertTouchY += yStep;
+      }
+    }
+    let horzHitDistance = foundHorzWallHit
+      ? distanceBetweenPoints(player.x, player.y, horzWallHitX, horzWallHitY)
+      : Infinity;
+    let vertHitDistance = foundVertWallHit
+      ? distanceBetweenPoints(player.x, player.y, vertWallHitX, vertWallHitY)
+      : Infinity;
+
+    this.wallHitX =
+      horzHitDistance < vertHitDistance ? horzWallHitX : vertWallHitX;
+    this.wallHitY =
+      horzHitDistance < vertHitDistance ? horzWallHitY : vertWallHitY;
+    this.distance =
+      horzHitDistance < vertHitDistance ? horzHitDistance : vertHitDistance;
+    this.wasHitVertical = vertHitDistance < horzHitDistance;
   }
 
   render() {
     stroke("rgba(255, 124, 255, 0.7)");
-    line(player.x, player.y, player.x + (30 * Math.cos(this.rayAngle)), player.y + 30 * Math.sin(this.rayAngle));
+    line(
+      player.x,
+      player.y,
+      this.wallHitX,
+      this.wallHitY
+    );
   }
+}
+
+function distanceBetweenPoints(x1, y1, x2, y2) {
+  return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
 }
 
 function normalizeAngle(angle) {
@@ -155,7 +230,7 @@ function normalizeAngle(angle) {
 
 let grid = new Map();
 let player = new Player();
-let rays = []
+let rays = [];
 
 function keyPressed() {
   if (keyCode === LEFT_ARROW) {
@@ -181,28 +256,25 @@ function keyReleased() {
 
 function castAllRays() {
   let columnId = 0;
-  let rayAngle = player.rotationAngle - (FOV / 2);
+  let rayAngle = player.rotationAngle - FOV / 2;
   rays = [];
 
-  // for (let i = 0; i < NUM_RAYS; ++i) {
-  for (let i = 0; i < 1; ++i) {
-      let ray = new Ray(rayAngle);
-      ray.cast(columnId);
-      rays.push(ray);
+  for (let i = 0; i < NUM_RAYS; ++i) {
+    let ray = new Ray(rayAngle);
+    ray.cast(columnId);
+    rays.push(ray);
 
-      rayAngle += FOV / NUM_RAYS;
-
-      columnId++;
+    rayAngle += FOV / NUM_RAYS;
+    columnId++;
   }
 }
 
 function setup() {
   createCanvas(WINDOW_WIDTH, WINDOW_HEIGHT);
-
 }
 
 function update() {
-  player.update()
+  player.update();
   castAllRays();
 }
 
@@ -214,7 +286,3 @@ function draw() {
   }
   player.render();
 }
-
-
-
-
