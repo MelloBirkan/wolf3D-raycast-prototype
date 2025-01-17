@@ -39,17 +39,15 @@ class Map {
     }
   }
 
-  isWalkable(x, y) {
+  isAWall(x, y) {
     const gridX = Math.floor(x / TILE_SIZE);
     const gridY = Math.floor(y / TILE_SIZE);
 
-    return (
-      gridX >= 0 &&
-      gridX < MAP_NUM_COLS &&
-      gridY >= 0 &&
-      gridY < MAP_NUM_ROWS &&
-      this.grid[gridY][gridX] === 0
-    );
+    if (gridX < 0 || gridX >= MAP_NUM_COLS || gridY < 0 || gridY >= MAP_NUM_ROWS) {
+      return true;
+    }
+    
+    return this.grid[gridY][gridX] === 1;
   }
 }
 
@@ -80,7 +78,7 @@ class Player {
     let nextX = this.x + moveStep * Math.cos(this.rotationAngle);
     let nextY = this.y + moveStep * Math.sin(this.rotationAngle);
 
-    if (grid.isWalkable(nextX, nextY)) {
+    if (!grid.isAWall(nextX, nextY)) {
       this.x = nextX;
       this.y = nextY;
     }
@@ -126,9 +124,9 @@ class Ray {
     let nextHorzTouchX = xIntercept;
     let nextHorzTouchY = yIntercept;
 
-    if (this.isRayFacingUp) {
-      nextHorzTouchY--;
-    }
+    // if (this.isRayFacingUp) {
+    //   nextHorzTouchY--;
+    // }
 
     while (
       nextHorzTouchX >= 0 &&
@@ -136,7 +134,13 @@ class Ray {
       nextHorzTouchY >= 0 &&
       nextHorzTouchY <= WINDOW_HEIGHT
     ) {
-      if (!grid.isWalkable(nextHorzTouchX, nextHorzTouchY)) {
+      let checkX = nextHorzTouchX;
+      let checkY = nextHorzTouchY;
+      if (this.isRayFacingUp) {
+        checkY--;
+      }
+
+      if (grid.isAWall(checkX, checkY)) {
         foundHorzWallHit = true;
         horzWallHitX = nextHorzTouchX;
         horzWallHitY = nextHorzTouchY;
@@ -167,9 +171,9 @@ class Ray {
     let nextVertTouchX = xIntercept;
     let nextVertTouchY = yIntercept;
 
-    if (this.isRayFacingLeft) {
-      nextVertTouchX--;
-    }
+    // if (this.isRayFacingLeft) {
+    //   nextVertTouchX--;
+    // }
 
     while (
       nextVertTouchX >= 0 &&
@@ -177,7 +181,13 @@ class Ray {
       nextVertTouchY >= 0 &&
       nextVertTouchY <= WINDOW_HEIGHT
     ) {
-      if (!grid.isWalkable(nextVertTouchX, nextVertTouchY)) {
+      let checkX = nextVertTouchX;
+      let checkY = nextVertTouchY;
+      if (this.isRayFacingLeft) {
+        checkX--;
+      }
+
+      if (grid.isAWall(checkX, checkY)) {
         foundVertWallHit = true;
         vertWallHitX = nextVertTouchX;
         vertWallHitY = nextVertTouchY;
